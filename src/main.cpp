@@ -34,6 +34,7 @@ using std::cin;
 using std::endl;
 
 #include <vector>
+#include <mkl.h>
 
 #include "hpcg.hpp"
 
@@ -60,6 +61,54 @@ using std::endl;
 #include "TestCG.hpp"
 #include "TestSymmetry.hpp"
 #include "TestNorms.hpp"
+
+int check_csr(int colidx[], int rowstr[]) {
+    int valid_row = 1;
+    int valid_col = 1;
+    #pragma omp parallel for reduction(&&: valid_row)
+    for (int i = 1; i < 1+1; i++) {
+        valid_row = valid_row && (rowstr[i] < rowstr[i+1]);
+    }
+
+   
+    if (!valid_row) {
+        return 0;
+    }
+
+    #pragma omp parallel for reduction(&&: valid_col)
+    for (int i = 1; i < 1+1; i++) {
+        int valid_col_local = 1;
+        for (int j = rowstr[i]; j < rowstr[i+1]-1; j++) {
+            valid_col_local = valid_col_local && (colidx[j] < colidx[j+1]);
+        }
+        valid_col = valid_col && valid_col_local;
+    }
+    return valid_col;
+}
+
+sparse_matrix_t check_and_convert_csr(const SparseMatrix & A) {
+  // if (!check_csr(colidx, rowstr)) {
+  //     return 0;
+  // }
+  long long colidx[A.localNumberOfNonzeros];
+  long long rowstr[A.localNumberOfRows + 1];
+  double values[A.localNumberOfNonzeros];
+
+  int rowstr_idx = 0;
+  rowstr[0] = 0;
+  for (int i=0; i< A.localNumberOfRows; i++)  {
+    rowstr[i+1] = rowstr[i] + A.nonzerosInRow[i];
+
+    const double * const cur_vals = A.matrixValues[i];
+    for (int j = 0; j< A.nonzerosInRow[i]; j++) {
+      values[rowstr[i] + j] = A.matrixValues[i][j];
+      colidx[rowstr[i] + j] = A.mtxIndL[i][j];
+    }
+  }
+  sparse_matrix_t Amkl;
+  mkl_sparse_d_create_csr(&Amkl, SPARSE_INDEX_BASE_ZERO, 1, 1, rowstr, rowstr+1, colidx, values);
+  return Amkl;
+}
 
 /*!
   Main driver program: Construct synthetic problem, run V&V tests, compute benchmark parameters, run benchmark, report results.
@@ -184,9 +233,11 @@ int main(int argc, char * argv[]) {
 
   int numberOfCalls = 10;
   if (quickPath) numberOfCalls = 1; //QuickPath means we do on one call of each block of repetitive code
+  // construct sparse_matrix_t
+  sparse_matrix_t Amkl = check_and_convert_csr(A);
   double t_begin = mytimer();
   for (int i=0; i< numberOfCalls; ++i) {
-    ierr = ComputeSPMV_ref(A, x_overlap, b_computed); // b_computed = A*x_overlap
+    ierr = ComputeSPMV_ref_mkl(Amkl, x_overlap, b_computed); // b_computed = A*x_overlap
     if (ierr) HPCG_fout << "Error in call to SpMV: " << ierr << ".\n" << endl;
     ierr = ComputeMG_ref(A, b_computed, x_overlap); // b_computed = Minv*y_overlap
     if (ierr) HPCG_fout << "Error in call to MG: " << ierr << ".\n" << endl;
