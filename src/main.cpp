@@ -99,7 +99,6 @@ sparse_matrix_t check_and_convert_csr(const SparseMatrix & A) {
   for (int i=0; i< A.localNumberOfRows; i++)  {
     rowstr[i+1] = rowstr[i] + A.nonzerosInRow[i];
 
-    const double * const cur_vals = A.matrixValues[i];
     for (int j = 0; j< A.nonzerosInRow[i]; j++) {
       values[rowstr[i] + j] = A.matrixValues[i][j];
       colidx[rowstr[i] + j] = A.mtxIndL[i][j];
@@ -243,6 +242,7 @@ int main(int argc, char * argv[]) {
     if (ierr) HPCG_fout << "Error in call to MG: " << ierr << ".\n" << endl;
   }
   times[8] = (mytimer() - t_begin)/((double) numberOfCalls);  // Total time divided by number of calls.
+  mkl_sparse_destroy(Amkl);
 #ifdef HPCG_DEBUG
   if (rank==0) HPCG_fout << "Total SpMV+MG timing phase execution time in main (sec) = " << mytimer() - t1 << endl;
 #endif

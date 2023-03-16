@@ -50,7 +50,6 @@ int ComputeSPMV_ref_mkl(sparse_matrix_t & A, Vector  & x, Vector & y) {
     struct matrix_descr descr = {SPARSE_MATRIX_TYPE_GENERAL};
     mkl_sparse_d_mv(SPARSE_OPERATION_NON_TRANSPOSE, alpha, A, descr, x.values, beta, y.values);
 
-    mkl_sparse_destroy(A);
     return 1;
 }
 
