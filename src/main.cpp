@@ -34,6 +34,7 @@ using std::cin;
 using std::endl;
 
 #include <vector>
+#include <mkl.h>
 
 #include "hpcg.hpp"
 
@@ -60,6 +61,49 @@ using std::endl;
 #include "TestCG.hpp"
 #include "TestSymmetry.hpp"
 #include "TestNorms.hpp"
+
+int check_csr(int colidx[], int rowstr[]) {
+    int valid_row = 1;
+    int valid_col = 1;
+    #pragma omp parallel for reduction(&&: valid_row)
+    for (int i = 1; i < 1+1; i++) {
+        valid_row = valid_row && (rowstr[i] < rowstr[i+1]);
+    }
+
+   
+    // if (!valid_row) {
+    //     return 0;
+    // }
+
+    // #pragma omp parallel for reduction(&&: valid_col)
+    // for (int i = 1; i < 1+1; i++) {
+    //     int valid_col_local = 1;
+    //     for (int j = rowstr[i]; j < rowstr[i+1]-1; j++) {
+    //         valid_col_local = valid_col_local && (colidx[j] < colidx[j+1]);
+    //     }
+    //     valid_col = valid_col && valid_col_local;
+    // }
+    // return valid_col;
+}
+
+// int check_and_run(int colidx[], int rowstr[], double a[], double p[], double *q) {
+//     // if (!check_csr(colidx, rowstr)) {
+//     //     return 0;
+//     // }
+//     sparse_matrix_t A;
+//     mkl_sparse_d_create_csr(&A, SPARSE_INDEX_BASE_ZERO, 1, 1, rowstr+1, rowstr+2, colidx, a);
+
+//     double alpha = 1.0, beta = 0.0;
+//     struct matrix_descr descr = {SPARSE_MATRIX_TYPE_GENERAL};
+//     mkl_sparse_d_mv(SPARSE_OPERATION_NON_TRANSPOSE, alpha, A, descr, p, beta, q+1);
+
+//     mkl_sparse_destroy(A);
+//     return 1;
+// }
+
+// int spmv_by_mkl(const SparseMatrix & A, Vector & x, Vector & y) {
+
+// }
 
 /*!
   Main driver program: Construct synthetic problem, run V&V tests, compute benchmark parameters, run benchmark, report results.
@@ -358,6 +402,9 @@ int main(int argc, char * argv[]) {
 
   // Report results to YAML file
   ReportResults(A, numberOfMgLevels, numberOfCgSets, refMaxIters, optMaxIters, &times[0], testcg_data, testsymmetry_data, testnorms_data, global_failure, quickPath);
+
+  #pragma omp parallel
+	printf("Hello, world.\n");
 
   // Clean up
   DeleteMatrix(A); // This delete will recursively delete all coarse grid data

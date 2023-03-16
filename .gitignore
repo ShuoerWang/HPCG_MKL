@@ -4,5 +4,9 @@ src/*.o
 bin/HPCG-Benchmark_3*.txt
 bin/xhpcg
 bin/hpcg20*.txt
+build/*
+build_off/*
+build_open/*
+
 .DS_Store
 build/*

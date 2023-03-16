@@ -2,11 +2,14 @@
 # HPCG Benchmark CMake configuration
 #
 cmake_minimum_required( VERSION 3.0 FATAL_ERROR )
+# set(CMAKE_CXX_COMPILER_LAUNCHER "/opt/intel/oneapi/mkl/latest/bin/intel64/mkl_link_tool")
 
 project( hpcg
     VERSION 3.1
     LANGUAGES CXX
     DESCRIPTION "High Performance Conjugate Gradient Benchmark (HPCG) " )
+
+find_package(MKL CONFIG REQUIRED)
 
 #
 # Options
@@ -17,7 +20,7 @@ option(HPCG_ENABLE_DEBUG "Enable debug build" OFF)
 option(HPCG_ENABLE_DETAILED_DEBUG "Enable detailed debug build" OFF)
 option(HPCG_ENABLE_MPI "Enable MPI support" OFF)
 option(HPCG_ENABLE_LONG_LONG "Enable use of 'long long' type for global indices" ON)
-option(HPCG_ENABLE_OPENMP "Enable OpenMP support" OFF)
+option(HPCG_ENABLE_OPENMP "Enable OpenMP support" ON)
 
 add_executable( xhpcg src/main.cpp src/CG.cpp src/CG_ref.cpp src/TestCG.cpp
     src/ComputeResidual.cpp src/ExchangeHalo.cpp src/GenerateGeometry.cpp
@@ -33,6 +36,9 @@ add_executable( xhpcg src/main.cpp src/CG.cpp src/CG_ref.cpp src/TestCG.cpp
     src/ComputeRestriction_ref.cpp src/GenerateCoarseProblem.cpp
     src/ComputeOptimalShapeXYZ.cpp src/MixedBaseCounter.cpp
     src/CheckAspectRatio.cpp src/OutputFile.cpp)
+
+target_compile_options(xhpcg PUBLIC $<TARGET_PROPERTY:MKL::MKL,INTERFACE_COMPILE_OPTIONS>)
+target_include_directories(xhpcg PUBLIC $<TARGET_PROPERTY:MKL::MKL,INTERFACE_INCLUDE_DIRECTORIES>)
 
 if (HPCG_ENABLE_CONTIGUOUS_ARRAYS)
     target_compile_definitions(xhpcg PRIVATE HPCG_CONTIGUOUS_ARRAYS)
@@ -65,7 +71,7 @@ endif ()
 if (HPCG_ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    target_link_libraries(xhpcg ${OpenMP_CXX_LIBRARIES})
+    target_link_libraries(xhpcg PUBLIC ${OpenMP_CXX_LIBRARIES} $<LINK_ONLY:MKL::MKL>)
 else ()
     target_compile_definitions(xhpcg PRIVATE HPCG_NO_OPENMP)
 endif ()
